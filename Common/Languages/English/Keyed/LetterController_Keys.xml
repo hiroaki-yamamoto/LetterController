@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <LetterController_Category>Letter Controller</LetterController_Category>
+  <LetterController_Search>Search:</LetterController_Search>
+  <LetterController_Clear>Clear</LetterController_Clear>
+  <LetterController_AllMods>All Mods</LetterController_AllMods>
+  <LetterController_SortTitle>Title</LetterController_SortTitle>
+  <LetterController_SortMod>Mod</LetterController_SortMod>
+  <LetterController_SortBehavior>Behavior</LetterController_SortBehavior>
+  <LetterController_ResetAll>Reset All</LetterController_ResetAll>
+  <LetterController_ResetConfirm>Are you sure you want to reset all incident letter behaviors to Default?</LetterController_ResetConfirm>
+  <LetterController_Behavior_Default>Default</LetterController_Behavior_Default>
+  <LetterController_Behavior_Ignore>Ignore</LetterController_Behavior_Ignore>
+  <LetterController_Behavior_Pause>Pause</LetterController_Behavior_Pause>
+  <LetterController_BehaviorDesc_Default>Follows the game's "Pause on Letter" option.</LetterController_BehaviorDesc_Default>
+  <LetterController_BehaviorDesc_Ignore>Suppresses the letter completely and mutes the arrival sound.</LetterController_BehaviorDesc_Ignore>
+  <LetterController_BehaviorDesc_Pause>Pauses the game even if not covered by the "Pause on Letter" option.</LetterController_BehaviorDesc_Pause>
+  <LetterController_IncidentCount>Showing {0} of {1} incident letters</LetterController_IncidentCount>
+  <LetterController_LetterCount>Showing {0} of {1} incident letters</LetterController_LetterCount>
+  <LetterController_UnknownIncident>Unknown Incident</LetterController_UnknownIncident>
+  <LetterController_UnknownLetter>Unknown Incident</LetterController_UnknownLetter>
+  <LetterController_CoreGame>Core Game</LetterController_CoreGame>
+</LanguageData>

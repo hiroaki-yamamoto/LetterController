@@ -1,0 +1,337 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>LetterController</name>
+    </assembly>
+    <members>
+        <member name="T:LetterController.Core.IncidentContext">
+            <summary>
+            Provides ambient execution context tracking for active <see cref="T:RimWorld.IncidentDef"/> instances.
+            Uses thread-static storage to guarantee thread isolation and deterministic context scoping.
+            </summary>
+        </member>
+        <member name="P:LetterController.Core.IncidentContext.CurrentIncident">
+            <summary>
+            Gets or sets the <see cref="T:RimWorld.IncidentDef"/> that is currently executing on this thread.
+            Returns <c>null</c> when code is executing outside of an incident lifecycle.
+            </summary>
+        </member>
+        <member name="T:LetterController.Core.IncidentItem">
+            <summary>
+            Represents an immutable metadata item for an incident definition (<see cref="T:RimWorld.IncidentDef"/>),
+            encapsulating incident details, originating mod information, and associated letter data.
+            Optimized for fast search, filtering, and UI display in the settings screen.
+            </summary>
+        </member>
+        <member name="P:LetterController.Core.IncidentItem.DefName">
+            <summary>
+            Gets the unique defName identifier of the incident.
+            </summary>
+        </member>
+        <member name="P:LetterController.Core.IncidentItem.Label">
+            <summary>
+            Gets the human-readable display label of the incident.
+            If the incident definition lacks a label, falls back to <see cref="P:LetterController.Core.IncidentItem.DefName"/>.
+            </summary>
+        </member>
+        <member name="P:LetterController.Core.IncidentItem.ModName">
+            <summary>
+            Gets the name of the package or mod that added this incident definition.
+            </summary>
+        </member>
+        <member name="P:LetterController.Core.IncidentItem.Def">
+            <summary>
+            Gets the underlying <see cref="T:RimWorld.IncidentDef"/> instance, or <c>null</c> in unit test contexts.
+            </summary>
+        </member>
+        <member name="P:LetterController.Core.IncidentItem.LetterDef">
+            <summary>
+            Gets the associated <see cref="T:Verse.LetterDef"/> configured on this incident, if any.
+            </summary>
+        </member>
+        <member name="M:LetterController.Core.IncidentItem.#ctor(RimWorld.IncidentDef)">
+            <summary>
+            Initializes a new instance of the <see cref="T:LetterController.Core.IncidentItem"/> class from an <see cref="T:RimWorld.IncidentDef"/>.
+            </summary>
+            <param name="def">The incident definition to encapsulate.</param>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="def"/> is null.</exception>
+        </member>
+        <member name="M:LetterController.Core.IncidentItem.#ctor(System.String,System.String,System.String,RimWorld.IncidentDef)">
+            <summary>
+            Initializes a new instance of the <see cref="T:LetterController.Core.IncidentItem"/> class with explicit properties (primarily used for unit testing).
+            </summary>
+            <param name="defName">The unique defName.</param>
+            <param name="label">The human-readable label.</param>
+            <param name="modName">The originating mod or package name.</param>
+            <param name="def">The optional incident definition.</param>
+        </member>
+        <member name="T:LetterController.Core.LetterBehavior">
+            <summary>
+            Represents the desired in-game behavior for a specific letter type.
+            </summary>
+        </member>
+        <member name="F:LetterController.Core.LetterBehavior.Default">
+            <summary>
+            Default behavior. Respects the game's native "Pause on Letter" option.
+            </summary>
+        </member>
+        <member name="F:LetterController.Core.LetterBehavior.Ignore">
+            <summary>
+            Suppresses the letter completely. It will not be displayed on the letter stack,
+            and no letter arrival sound will play.
+            </summary>
+        </member>
+        <member name="F:LetterController.Core.LetterBehavior.Pause">
+            <summary>
+            Forces the game to pause when the letter arrives, even if its letter type
+            is not covered by the game's native "Pause on Letter" option.
+            </summary>
+        </member>
+        <member name="T:LetterController.Core.LetterControllerMod">
+            <summary>
+            The entry point Mod class for Letter Controller.
+            Manages the mod lifecycle, initializes Harmony patches, and hosts the mod settings window.
+            </summary>
+        </member>
+        <member name="P:LetterController.Core.LetterControllerMod.Settings">
+            <summary>
+            Gets the singleton settings instance for the Letter Controller mod.
+            </summary>
+        </member>
+        <member name="M:LetterController.Core.LetterControllerMod.#ctor(Verse.ModContentPack)">
+            <summary>
+            Initializes a new instance of the <see cref="T:LetterController.Core.LetterControllerMod"/> class.
+            Loads user settings and applies Harmony patches.
+            </summary>
+            <param name="content">The mod content pack.</param>
+        </member>
+        <member name="M:LetterController.Core.LetterControllerMod.SettingsCategory">
+            <summary>
+            Gets the category name displayed in the RimWorld Mod Options menu.
+            Accessible from Options > Mod Options on the main menu and during active gameplay.
+            </summary>
+            <returns>The localized category title.</returns>
+        </member>
+        <member name="M:LetterController.Core.LetterControllerMod.DoSettingsWindowContents(UnityEngine.Rect)">
+            <summary>
+            Draws the mod settings window contents.
+            </summary>
+            <param name="inRect">The available client rectangle in the mod options dialog.</param>
+        </member>
+        <member name="T:LetterController.Core.LetterControllerSettings">
+            <summary>
+            Stores user configurations for incident letter behavior in RimWorld's mod options.
+            Manages serialization via RimWorld's Scribe system and provides O(1) behavior lookups per incident.
+            </summary>
+        </member>
+        <member name="F:LetterController.Core.LetterControllerSettings.customBehaviors">
+            <summary>
+            Backing dictionary storing custom letter behaviors keyed by incident defName.
+            Entries with <see cref="F:LetterController.Core.LetterBehavior.Default"/> are removed to optimize space complexity.
+            </summary>
+        </member>
+        <member name="M:LetterController.Core.LetterControllerSettings.GetBehavior(System.String)">
+            <summary>
+            Gets the configured <see cref="T:LetterController.Core.LetterBehavior"/> for the specified incident defName.
+            </summary>
+            <param name="defName">The defName of the incident.</param>
+            <returns>The configured behavior, or <see cref="F:LetterController.Core.LetterBehavior.Default"/> if not configured.</returns>
+        </member>
+        <member name="M:LetterController.Core.LetterControllerSettings.SetBehavior(System.String,LetterController.Core.LetterBehavior)">
+            <summary>
+            Sets the <see cref="T:LetterController.Core.LetterBehavior"/> for the specified incident defName.
+            When setting to <see cref="F:LetterController.Core.LetterBehavior.Default"/>, the entry is pruned to conserve memory.
+            Changes take effect immediately without requiring a game reload.
+            </summary>
+            <param name="defName">The defName of the incident.</param>
+            <param name="behavior">The desired behavior.</param>
+        </member>
+        <member name="M:LetterController.Core.LetterControllerSettings.ResetAll">
+            <summary>
+            Resets all configured incident letter behaviors back to <see cref="F:LetterController.Core.LetterBehavior.Default"/>.
+            </summary>
+        </member>
+        <member name="P:LetterController.Core.LetterControllerSettings.CustomCount">
+            <summary>
+            Gets the number of customized incident behavior entries.
+            </summary>
+        </member>
+        <member name="M:LetterController.Core.LetterControllerSettings.ExposeData">
+            <summary>
+            Saves and loads mod settings data.
+            </summary>
+        </member>
+        <member name="T:LetterController.Patches.IncidentWorkerPatch">
+            <summary>
+            Harmony patch targeting <see cref="M:RimWorld.IncidentWorker.TryExecute(RimWorld.IncidentParms)"/>
+            to establish and maintain ambient <see cref="T:LetterController.Core.IncidentContext"/> throughout incident execution.
+            </summary>
+        </member>
+        <member name="M:LetterController.Patches.IncidentWorkerPatch.Prefix(RimWorld.IncidentWorker,RimWorld.IncidentDef@)">
+            <summary>
+            Prefix hook saving the outer incident context state and setting the current executing incident.
+            </summary>
+            <param name="__instance">The active <see cref="T:RimWorld.IncidentWorker"/> instance.</param>
+            <param name="__state">Receives the previous incident context to restore upon completion.</param>
+        </member>
+        <member name="M:LetterController.Patches.IncidentWorkerPatch.Finalizer(System.Exception,RimWorld.IncidentDef)">
+            <summary>
+            Finalizer hook guaranteeing the restoration of prior incident context state,
+            even if an unhandled exception occurs within an incident worker or downstream mod patch.
+            </summary>
+            <param name="__exception">The exception thrown by the worker, if any.</param>
+            <param name="__state">The previous incident context state saved by the prefix.</param>
+            <returns>The original exception to propagate unmodified.</returns>
+        </member>
+        <member name="T:LetterController.Patches.LetterStackPatch">
+            <summary>
+            Harmony patch targeting <see cref="M:Verse.LetterStack.ReceiveLetter(Verse.Letter,System.String,System.Int32,System.Boolean)"/>
+            to apply custom user behaviors (Ignore or Pause) to letters triggered by in-game incidents.
+            </summary>
+        </member>
+        <member name="M:LetterController.Patches.LetterStackPatch.Prefix(Verse.Letter)">
+            <summary>
+            Prefix hook executed before a letter is processed.
+            If the letter originated from an active incident with <see cref="F:LetterController.Core.LetterBehavior.Ignore"/>,
+            the original method execution is skipped entirely, suppressing letter display and notification sound.
+            </summary>
+            <param name="let">The arriving letter.</param>
+            <returns><c>false</c> to suppress the letter; <c>true</c> to continue with standard processing.</returns>
+        </member>
+        <member name="M:LetterController.Patches.LetterStackPatch.Postfix(Verse.Letter,System.Int32)">
+            <summary>
+            Postfix hook executed after a letter is processed.
+            If the letter originated from an active incident with <see cref="F:LetterController.Core.LetterBehavior.Pause"/>,
+            and the letter was not delayed or dismissed, the game is paused immediately.
+            </summary>
+            <param name="let">The arriving letter.</param>
+            <param name="delayTicks">The delay in ticks before the letter is added.</param>
+        </member>
+        <member name="T:LetterController.Services.IncidentSortField">
+            <summary>
+            Specifies the field by which the incident letter list is sorted.
+            </summary>
+        </member>
+        <member name="F:LetterController.Services.IncidentSortField.Title">
+            <summary>
+            Sort by incident display label or defName.
+            </summary>
+        </member>
+        <member name="F:LetterController.Services.IncidentSortField.Mod">
+            <summary>
+            Sort by originating DLC or mod name.
+            </summary>
+        </member>
+        <member name="F:LetterController.Services.IncidentSortField.Behavior">
+            <summary>
+            Sort by configured behavior.
+            </summary>
+        </member>
+        <member name="T:LetterController.Services.SortDirection">
+            <summary>
+            Specifies the sort direction.
+            </summary>
+        </member>
+        <member name="F:LetterController.Services.SortDirection.Ascending">
+            <summary>
+            Ascending order.
+            </summary>
+        </member>
+        <member name="F:LetterController.Services.SortDirection.Descending">
+            <summary>
+            Descending order.
+            </summary>
+        </member>
+        <member name="T:LetterController.Services.IncidentFilterService">
+            <summary>
+            Service responsible for gathering, filtering, searching, and sorting incident definitions that send letters.
+            Employs cached state and dirty flags to avoid redundant allocations on every UI render frame.
+            </summary>
+        </member>
+        <member name="P:LetterController.Services.IncidentFilterService.FilteredItems">
+            <summary>
+            Gets the filtered and sorted list of incident items.
+            </summary>
+        </member>
+        <member name="P:LetterController.Services.IncidentFilterService.TotalCount">
+            <summary>
+            Gets the total count of letter-sending incidents loaded in the game.
+            </summary>
+        </member>
+        <member name="P:LetterController.Services.IncidentFilterService.AvailableMods">
+            <summary>
+            Gets the list of available mod and DLC names for filtering, with "All Mods" as the first option.
+            </summary>
+        </member>
+        <member name="P:LetterController.Services.IncidentFilterService.SearchQuery">
+            <summary>
+            Gets or sets the search query string.
+            </summary>
+        </member>
+        <member name="P:LetterController.Services.IncidentFilterService.SelectedModFilter">
+            <summary>
+            Gets or sets the currently selected mod filter.
+            Empty or "All" indicates no mod filter.
+            </summary>
+        </member>
+        <member name="P:LetterController.Services.IncidentFilterService.SortField">
+            <summary>
+            Gets or sets the active sort field.
+            </summary>
+        </member>
+        <member name="P:LetterController.Services.IncidentFilterService.SortDirection">
+            <summary>
+            Gets or sets the active sort direction.
+            </summary>
+        </member>
+        <member name="M:LetterController.Services.IncidentFilterService.InitializeFromDefs">
+            <summary>
+            Initializes the incident catalog from the RimWorld DefDatabase,
+            including all incidents that send in-game letters.
+            </summary>
+        </member>
+        <member name="M:LetterController.Services.IncidentFilterService.SendsLetter(RimWorld.IncidentDef)">
+            <summary>
+            Determines whether the specified <see cref="T:RimWorld.IncidentDef"/> is valid and can send in-game letters.
+            In RimWorld, many incidents (such as raids, trader visits, resource pod crashes, and modded events like Dynamic Diplomacy)
+            dispatch letters dynamically via their worker class rather than declaring static XML letter fields (e.g. letterDef, letterLabel).
+            Therefore, all valid incident definitions are cataloged so players can configure their letter behaviors.
+            </summary>
+            <param name="def">The incident definition to evaluate.</param>
+            <returns><c>true</c> if the incident is valid and can send letters; otherwise, <c>false</c>.</returns>
+        </member>
+        <member name="M:LetterController.Services.IncidentFilterService.SetItems(System.Collections.Generic.IEnumerable{LetterController.Core.IncidentItem})">
+            <summary>
+            Sets items explicitly (primarily used for unit testing).
+            </summary>
+            <param name="items">The items list.</param>
+        </member>
+        <member name="M:LetterController.Services.IncidentFilterService.ToggleSort(LetterController.Services.IncidentSortField)">
+            <summary>
+            Toggles the sort direction if the same field is selected, or switches to the new field in ascending order.
+            </summary>
+            <param name="field">The sort field to activate.</param>
+        </member>
+        <member name="M:LetterController.Services.IncidentFilterService.Update(LetterController.Core.LetterControllerSettings)">
+            <summary>
+            Updates the filtered and sorted list if any search parameters or settings changed.
+            Should be called before rendering the UI table.
+            </summary>
+            <param name="settings">The active settings instance to resolve behaviors for sorting.</param>
+        </member>
+        <member name="T:LetterController.UI.LetterControllerSettingsUi">
+            <summary>
+            Handles the rendering and user interaction for the Letter Controller mod settings screen.
+            Follows RimWorld's native UI conventions, including FloatMenus, ScrollViews, and visual styling.
+            Displays letter-sending incidents with per-incident behavior controls.
+            </summary>
+        </member>
+        <member name="M:LetterController.UI.LetterControllerSettingsUi.Draw(UnityEngine.Rect,LetterController.Core.LetterControllerSettings)">
+            <summary>
+            Renders the settings screen contents within the specified bounding rectangle.
+            </summary>
+            <param name="inRect">The bounding rectangle for the mod options window.</param>
+            <param name="settings">The active mod settings instance.</param>
+        </member>
+    </members>
+</doc>

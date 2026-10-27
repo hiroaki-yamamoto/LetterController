@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <LetterController_Category>レターコントローラー</LetterController_Category>
+  <LetterController_Search>検索:</LetterController_Search>
+  <LetterController_Clear>クリア</LetterController_Clear>
+  <LetterController_AllMods>すべてのMod</LetterController_AllMods>
+  <LetterController_SortTitle>タイトル</LetterController_SortTitle>
+  <LetterController_SortMod>Mod</LetterController_SortMod>
+  <LetterController_SortBehavior>動作設定</LetterController_SortBehavior>
+  <LetterController_ResetAll>すべてリセット</LetterController_ResetAll>
+  <LetterController_ResetConfirm>すべての出来事レターの動作設定をデフォルトに戻しますか？</LetterController_ResetConfirm>
+  <LetterController_Behavior_Default>デフォルト</LetterController_Behavior_Default>
+  <LetterController_Behavior_Ignore>無視</LetterController_Behavior_Ignore>
+  <LetterController_Behavior_Pause>一時停止</LetterController_Behavior_Pause>
+  <LetterController_BehaviorDesc_Default>ゲーム設定の「手紙到着時に一時停止」に従います。</LetterController_BehaviorDesc_Default>
+  <LetterController_BehaviorDesc_Ignore>画面上に手紙を表示せず、到着音も鳴らしません。</LetterController_BehaviorDesc_Ignore>
+  <LetterController_BehaviorDesc_Pause>「手紙到着時に一時停止」の対象外であっても強制的に一時停止します。</LetterController_BehaviorDesc_Pause>
+  <LetterController_IncidentCount>{1} 件中 {0} 件の出来事レターを表示</LetterController_IncidentCount>
+  <LetterController_LetterCount>{1} 件中 {0} 件の出来事レターを表示</LetterController_LetterCount>
+  <LetterController_UnknownIncident>不明な出来事</LetterController_UnknownIncident>
+  <LetterController_UnknownLetter>不明な出来事</LetterController_UnknownLetter>
+  <LetterController_CoreGame>基本ゲーム</LetterController_CoreGame>
+</LanguageData>

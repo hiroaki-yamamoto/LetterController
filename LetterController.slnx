@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="LetterController/LetterController.csproj" />
+  <Project Path="Tests/LetterController.Tests.csproj" />
 </Solution>

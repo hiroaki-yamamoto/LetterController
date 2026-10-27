@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+  <name>Letter Controller</name>
+  <author>User</author>
+  <packageId>lettercontroller.mod</packageId>
+  <supportedVersions>
+    <li>1.7</li>
+  </supportedVersions>
+  <modDependencies>
+    <li>
+      <packageId>brrainz.harmony</packageId>
+      <displayName>Harmony</displayName>
+      <steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
+    </li>
+  </modDependencies>
+  <loadAfter>
+    <li>brrainz.harmony</li>
+  </loadAfter>
+  <description>
+Take full control over RimWorld's letter notifications!
+
+Features:
+- Configurable in Options &gt; Mod Options at any time (main menu or during gameplay).
+- Real-time keyword search to quickly locate specific event letters.
+- Filter letters by DLC or mod source.
+- Complete catalog of all letters including vanilla, DLCs, and modded letters.
+- Sort by Title, Mod, or Behavior.
+- Custom behaviors per letter:
+  - Default: Respects the vanilla "Pause on Letter" game option.
+  - Ignore: Completely suppresses the letter and arrival sound.
+  - Pause: Forces the game to pause when the letter arrives even if not covered by "Pause on Letter".
+- Immediate effect: All setting changes apply instantly without reloading the game.
+  </description>
+</ModMetaData>
