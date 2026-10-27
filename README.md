@@ -1,7 +1,7 @@
 # Letter Controller
 
 > [!NOTE]
-> **AI-assisted development notice:** This mod was created with the assistance of AI (Google Gemini). The code and documentation were reviewed by the author, but may still contain mistakes. Please report any issues you find.
+> **AI-assisted development notice:** This mod was created with the assistance of AI (Google Gemini). The code and documentation were reviewed by the author, but may still contain mistakes. Please Pull Requests you find.
 
 Take full control over RimWorld's letter notifications, **per incident**.
 
@@ -61,6 +61,10 @@ Settings are kept in a dictionary keyed by `defName` (case-insensitive), so look
 - Works with modded incidents, including ones that send letters from their own worker classes.
 - Only letters sent while an incident is executing can be controlled.
 - Safe to add or remove mid-save.
+
+## Issues and Pull Requests
+- Any Issues are **not** welcome.
+- However, Pull Requests are generally welcome.
 
 ## Credits
 
