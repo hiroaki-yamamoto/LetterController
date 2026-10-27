@@ -1,7 +1,9 @@
 # Letter Controller
 
 > [!NOTE]
-> **AI-assisted development notice:** This mod was created with the assistance of AI (Google Gemini). The code and documentation were reviewed by the author, but may still contain mistakes. Please Pull Requests you find.
+> **AI-assisted development notice:** This mod was created with the assistance
+> of AI (Google Gemini). The code and documentation were reviewed by the author,
+> but may still contain mistakes. Please send Pull Requests you find.
 
 Take full control over RimWorld's letter notifications, **per incident**.
 
