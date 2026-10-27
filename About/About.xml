@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ModMetaData>
   <name>Letter Controller</name>
-  <author>User</author>
+  <author>Hiroaki Yamamoto and Gemini</author>
   <packageId>lettercontroller.mod</packageId>
   <supportedVersions>
     <li>1.7</li>
