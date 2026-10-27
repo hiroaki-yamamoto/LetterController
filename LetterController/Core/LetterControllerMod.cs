@@ -9,6 +9,11 @@ namespace LetterController.Core
     /// The entry point Mod class for Letter Controller.
     /// Manages the mod lifecycle, initializes Harmony patches, and hosts the mod settings window.
     /// </summary>
+    /// <example>
+    /// <code>
+    /// // Mod lifecycle entry point managed by RimWorld mod loader.
+    /// </code>
+    /// </example>
     public class LetterControllerMod : Mod
     {
         /// <summary>
@@ -29,6 +34,15 @@ namespace LetterController.Core
 
             var harmony = new Harmony("rimworld.mod.lettercontroller");
             harmony.PatchAll();
+        }
+
+        /// <summary>
+        /// Sets the mod settings instance directly (primarily used for test harness initialization).
+        /// </summary>
+        /// <param name="settings">The settings instance.</param>
+        public static void SetSettingsForTesting(LetterControllerSettings? settings)
+        {
+            Settings = settings!;
         }
 
         /// <summary>

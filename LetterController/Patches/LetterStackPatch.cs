@@ -1,5 +1,6 @@
 using HarmonyLib;
 using LetterController.Core;
+using LetterController.Services;
 using Verse;
 
 namespace LetterController.Patches
@@ -7,7 +8,14 @@ namespace LetterController.Patches
     /// <summary>
     /// Harmony patch targeting <see cref="Verse.LetterStack.ReceiveLetter(Letter, string, int, bool)"/>
     /// to apply custom user behaviors (Ignore or Pause) to letters triggered by in-game incidents.
+    /// Delegates decision and pause execution to <see cref="LetterInterceptionPolicy"/>.
     /// </summary>
+    /// <example>
+    /// <code>
+    /// // Prefix suppresses letter when policy indicates Ignore:
+    /// bool allow = LetterStackPatch.Prefix(letter);
+    /// </code>
+    /// </example>
     [HarmonyPatch(typeof(LetterStack), nameof(LetterStack.ReceiveLetter), typeof(Letter), typeof(string), typeof(int), typeof(bool))]
     public static class LetterStackPatch
     {
@@ -22,20 +30,9 @@ namespace LetterController.Patches
         public static bool Prefix(Letter let)
         {
             var incident = IncidentContext.CurrentIncident;
-            if (incident == null)
-            {
-                // Letter was not triggered by an active incident; preserve standard game behavior
-                return true;
-            }
-
             var settings = LetterControllerMod.Settings;
-            if (settings == null)
-            {
-                return true;
-            }
 
-            var behavior = settings.GetBehavior(incident.defName);
-            if (behavior == LetterBehavior.Ignore)
+            if (LetterInterceptionPolicy.ShouldSuppress(incident, settings))
             {
                 // Ignore: Suppress letter display and arrival sound completely
                 return false;
@@ -54,36 +51,10 @@ namespace LetterController.Patches
         [HarmonyPostfix]
         public static void Postfix(Letter let, int delayTicks)
         {
-            // If the letter is delayed into the queue, wait until it actually arrives at delayTicks <= 0
-            if (delayTicks > 0 || let?.def == null)
-            {
-                return;
-            }
-
-            // If the letter cannot show in stack, it was dismissed or invalid
-            if (!let.CanShowInLetterStack)
-            {
-                return;
-            }
-
             var incident = IncidentContext.CurrentIncident;
-            if (incident == null)
-            {
-                return;
-            }
-
             var settings = LetterControllerMod.Settings;
-            if (settings == null)
-            {
-                return;
-            }
 
-            var behavior = settings.GetBehavior(incident.defName);
-            if (behavior == LetterBehavior.Pause)
-            {
-                // Pause: Force pause the game even if not covered by the native "Pause on Letter" option
-                Find.TickManager?.Pause();
-            }
+            LetterInterceptionPolicy.HandlePostfix(let, delayTicks, incident, settings);
         }
     }
 }

@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using LetterController.Core;
 using LetterController.Services;
 using UnityEngine;
@@ -12,9 +10,15 @@ namespace LetterController.UI
     /// Follows RimWorld's native UI conventions, including FloatMenus, ScrollViews, and visual styling.
     /// Displays letter-sending incidents with per-incident behavior controls.
     /// </summary>
+    /// <example>
+    /// <code>
+    /// var ui = new LetterControllerSettingsUi();
+    /// ui.Draw(new Rect(0, 0, 800, 600), new LetterControllerSettings());
+    /// </code>
+    /// </example>
     public class LetterControllerSettingsUi
     {
-        private readonly IncidentFilterService filterService = new();
+        private readonly IncidentFilterService filterService;
         private Vector2 scrollPosition = Vector2.zero;
         private bool isInitialized;
 
@@ -22,11 +26,20 @@ namespace LetterController.UI
         private const float ColorBoxWidth = 14f;
 
         /// <summary>
+        /// Initializes a new instance of the <see cref="LetterControllerSettingsUi"/> class.
+        /// </summary>
+        /// <param name="filterService">Optional filter service dependency; uses default instance if not provided.</param>
+        public LetterControllerSettingsUi(IncidentFilterService? filterService = null)
+        {
+            this.filterService = filterService ?? new IncidentFilterService();
+        }
+
+        /// <summary>
         /// Renders the settings screen contents within the specified bounding rectangle.
         /// </summary>
         /// <param name="inRect">The bounding rectangle for the mod options window.</param>
         /// <param name="settings">The active mod settings instance.</param>
-        public void Draw(Rect inRect, LetterControllerSettings settings)
+        public void Draw(Rect inRect, ILetterControllerSettings settings)
         {
             if (!isInitialized)
             {
@@ -56,7 +69,7 @@ namespace LetterController.UI
             DrawFooter(footerRect);
         }
 
-        private void DrawToolbar(Rect rect, LetterControllerSettings settings)
+        private void DrawToolbar(Rect rect, ILetterControllerSettings settings)
         {
             float x = rect.x;
 
@@ -173,7 +186,7 @@ namespace LetterController.UI
             return filterService.SortDirection == SortDirection.Ascending ? " ▲" : " ▼";
         }
 
-        private void DrawIncidentTable(Rect outRect, LetterControllerSettings settings)
+        private void DrawIncidentTable(Rect outRect, ILetterControllerSettings settings)
         {
             var items = filterService.FilteredItems;
             float totalHeight = items.Count * RowHeight;
@@ -241,7 +254,7 @@ namespace LetterController.UI
             Widgets.EndScrollView();
         }
 
-        private void DrawBehaviorButton(Rect rect, string defName, LetterBehavior currentBehavior, LetterControllerSettings settings)
+        private static void DrawBehaviorButton(Rect rect, string defName, LetterBehavior currentBehavior, ILetterControllerSettings settings)
         {
             string labelKey = currentBehavior switch
             {

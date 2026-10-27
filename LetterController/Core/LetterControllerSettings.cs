@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using Verse;
 
 namespace LetterController.Core
@@ -8,7 +6,14 @@ namespace LetterController.Core
     /// Stores user configurations for incident letter behavior in RimWorld's mod options.
     /// Manages serialization via RimWorld's Scribe system and provides O(1) behavior lookups per incident.
     /// </summary>
-    public class LetterControllerSettings : ModSettings
+    /// <example>
+    /// <code>
+    /// var settings = new LetterControllerSettings();
+    /// settings.SetBehavior("RaidEnemy", LetterBehavior.Pause);
+    /// Assert.AreEqual(LetterBehavior.Pause, settings.GetBehavior("RaidEnemy"));
+    /// </code>
+    /// </example>
+    public class LetterControllerSettings : ModSettings, ILetterControllerSettings
     {
         /// <summary>
         /// Backing dictionary storing custom letter behaviors keyed by incident defName.
@@ -17,7 +22,7 @@ namespace LetterController.Core
         private Dictionary<string, LetterBehavior> customBehaviors = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
-        /// Gets the configured <see cref="LetterBehavior"/> for the specified incident defName.
+        /// Gets the configured <see cref="LetterBehavior"/> for the specified incident defName in O(1) time complexity.
         /// </summary>
         /// <param name="defName">The defName of the incident.</param>
         /// <returns>The configured behavior, or <see cref="LetterBehavior.Default"/> if not configured.</returns>
@@ -34,8 +39,8 @@ namespace LetterController.Core
         }
 
         /// <summary>
-        /// Sets the <see cref="LetterBehavior"/> for the specified incident defName.
-        /// When setting to <see cref="LetterBehavior.Default"/>, the entry is pruned to conserve memory.
+        /// Sets the <see cref="LetterBehavior"/> for the specified incident defName in O(1) time complexity.
+        /// When setting to <see cref="LetterBehavior.Default"/>, the entry is pruned to conserve memory (O(K) space complexity).
         /// Changes take effect immediately without requiring a game reload.
         /// </summary>
         /// <param name="defName">The defName of the incident.</param>
@@ -59,6 +64,7 @@ namespace LetterController.Core
 
         /// <summary>
         /// Resets all configured incident letter behaviors back to <see cref="LetterBehavior.Default"/>.
+        /// Time complexity: O(1) by clearing the dictionary.
         /// </summary>
         public void ResetAll()
         {
@@ -71,7 +77,7 @@ namespace LetterController.Core
         public int CustomCount => customBehaviors.Count;
 
         /// <summary>
-        /// Saves and loads mod settings data.
+        /// Saves and loads mod settings data using RimWorld's Scribe system.
         /// </summary>
         public override void ExposeData()
         {

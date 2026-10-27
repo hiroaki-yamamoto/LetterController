@@ -4,15 +4,22 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace LetterController.Tests
 {
     /// <summary>
-    /// Unit tests verifying the functionality and complexity optimizations of <see cref="LetterControllerSettings"/>.
+    /// Unit tests verifying the functionality, interface conformance, and complexity optimizations of <see cref="LetterControllerSettings"/>.
     /// </summary>
     [TestClass]
     public class SettingsTests
     {
         [TestMethod]
-        public void GetBehavior_Unconfigured_ReturnsDefault()
+        public void InterfaceConformance_ImplementsILetterControllerSettings()
         {
             var settings = new LetterControllerSettings();
+            Assert.IsInstanceOfType<ILetterControllerSettings>(settings);
+        }
+
+        [TestMethod]
+        public void GetBehavior_Unconfigured_ReturnsDefault()
+        {
+            ILetterControllerSettings settings = new LetterControllerSettings();
             var behavior = settings.GetBehavior("RaidEnemy");
 
             Assert.AreEqual(LetterBehavior.Default, behavior);
@@ -22,7 +29,7 @@ namespace LetterController.Tests
         [TestMethod]
         public void SetBehavior_Ignore_PersistsAndReportsCustom()
         {
-            var settings = new LetterControllerSettings();
+            ILetterControllerSettings settings = new LetterControllerSettings();
             settings.SetBehavior("RaidEnemy", LetterBehavior.Ignore);
 
             Assert.AreEqual(LetterBehavior.Ignore, settings.GetBehavior("RaidEnemy"));
@@ -32,7 +39,7 @@ namespace LetterController.Tests
         [TestMethod]
         public void SetBehavior_Pause_PersistsAndReportsCustom()
         {
-            var settings = new LetterControllerSettings();
+            ILetterControllerSettings settings = new LetterControllerSettings();
             settings.SetBehavior("TraderCaravanArrival", LetterBehavior.Pause);
 
             Assert.AreEqual(LetterBehavior.Pause, settings.GetBehavior("TraderCaravanArrival"));
@@ -42,7 +49,7 @@ namespace LetterController.Tests
         [TestMethod]
         public void SetBehavior_BackToDefault_PrunesEntryToOptimizeSpaceComplexity()
         {
-            var settings = new LetterControllerSettings();
+            ILetterControllerSettings settings = new LetterControllerSettings();
             settings.SetBehavior("RaidEnemy", LetterBehavior.Ignore);
             Assert.AreEqual(1, settings.CustomCount);
 
@@ -56,7 +63,7 @@ namespace LetterController.Tests
         [TestMethod]
         public void ResetAll_ClearsAllConfiguredBehaviors()
         {
-            var settings = new LetterControllerSettings();
+            ILetterControllerSettings settings = new LetterControllerSettings();
             settings.SetBehavior("RaidEnemy", LetterBehavior.Ignore);
             settings.SetBehavior("SolarFlare", LetterBehavior.Pause);
             Assert.AreEqual(2, settings.CustomCount);
@@ -71,17 +78,18 @@ namespace LetterController.Tests
         [TestMethod]
         public void GetBehavior_CaseInsensitiveDefName_ResolvesCorrectly()
         {
-            var settings = new LetterControllerSettings();
+            ILetterControllerSettings settings = new LetterControllerSettings();
             settings.SetBehavior("raidenemy", LetterBehavior.Ignore);
 
             Assert.AreEqual(LetterBehavior.Ignore, settings.GetBehavior("RaidEnemy"));
             Assert.AreEqual(LetterBehavior.Ignore, settings.GetBehavior("RAIDENEMY"));
+            Assert.AreEqual(LetterBehavior.Ignore, settings.GetBehavior("rAiDeNeMy"));
         }
 
         [TestMethod]
         public void NullOrEmptyDefName_SafeAndHandledGracefully()
         {
-            var settings = new LetterControllerSettings();
+            ILetterControllerSettings settings = new LetterControllerSettings();
             settings.SetBehavior(null, LetterBehavior.Ignore);
             settings.SetBehavior(string.Empty, LetterBehavior.Ignore);
 

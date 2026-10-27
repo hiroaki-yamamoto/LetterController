@@ -1,5 +1,3 @@
-using System;
-using System.IO;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -13,6 +11,8 @@ namespace LetterController.Tests
     [TestClass]
     public class TestInitializer
     {
+        private static bool isInitialized;
+
         /// <summary>
         /// Registers dynamic assembly resolution hooks for RimWorld dependencies before any unit test runs.
         /// </summary>
@@ -20,6 +20,13 @@ namespace LetterController.Tests
         [AssemblyInitialize]
         public static void AssemblyInitialize(TestContext context)
         {
+            if (isInitialized)
+            {
+                return;
+            }
+
+            isInitialized = true;
+
             AppDomain.CurrentDomain.AssemblyResolve += (sender, eventArgs) =>
             {
                 var assemblyName = new AssemblyName(eventArgs.Name).Name;

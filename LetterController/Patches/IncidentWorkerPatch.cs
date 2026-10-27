@@ -1,4 +1,3 @@
-using System;
 using HarmonyLib;
 using LetterController.Core;
 using RimWorld;
@@ -9,6 +8,14 @@ namespace LetterController.Patches
     /// Harmony patch targeting <see cref="IncidentWorker.TryExecute(IncidentParms)"/>
     /// to establish and maintain ambient <see cref="IncidentContext"/> throughout incident execution.
     /// </summary>
+    /// <example>
+    /// <code>
+    /// // Context is automatically populated during IncidentWorker execution:
+    /// IncidentWorkerPatch.Prefix(worker, out var state);
+    /// try { /* incident runs */ }
+    /// finally { IncidentWorkerPatch.Finalizer(null, state); }
+    /// </code>
+    /// </example>
     [HarmonyPatch(typeof(IncidentWorker), nameof(IncidentWorker.TryExecute), typeof(IncidentParms))]
     public static class IncidentWorkerPatch
     {

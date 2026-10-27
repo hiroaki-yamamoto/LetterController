@@ -1,4 +1,3 @@
-using System;
 using RimWorld;
 using Verse;
 
@@ -9,7 +8,14 @@ namespace LetterController.Core
     /// encapsulating incident details, originating mod information, and associated letter data.
     /// Optimized for fast search, filtering, and UI display in the settings screen.
     /// </summary>
-    public class IncidentItem
+    /// <example>
+    /// <code>
+    /// var item = new IncidentItem("RaidEnemy", "Enemy Raid", "Core");
+    /// Assert.IsTrue(item.MatchesQuery("Enemy"));
+    /// Assert.IsFalse(item.MatchesQuery("Trader"));
+    /// </code>
+    /// </example>
+    public class IncidentItem : IIncidentItem
     {
         /// <summary>
         /// Gets the unique defName identifier of the incident.
@@ -76,6 +82,25 @@ namespace LetterController.Core
             Label = label ?? string.Empty;
             ModName = modName ?? string.Empty;
             Def = def;
+        }
+
+        /// <summary>
+        /// Determines whether this incident item matches the specified search query across its Label, DefName, or ModName.
+        /// Uses short-circuiting to minimize character comparisons: tests Label first (most common match),
+        /// then DefName, then ModName.
+        /// </summary>
+        /// <param name="query">The search query keyword.</param>
+        /// <returns><c>true</c> if matched; otherwise, <c>false</c>.</returns>
+        public bool MatchesQuery(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return true;
+            }
+
+            return Label.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                   DefName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                   ModName.Contains(query, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

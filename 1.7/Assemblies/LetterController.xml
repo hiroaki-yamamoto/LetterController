@@ -4,11 +4,103 @@
         <name>LetterController</name>
     </assembly>
     <members>
+        <member name="T:LetterController.Core.IIncidentItem">
+            <summary>
+            Represents an immutable metadata entry for an incident definition (<see cref="T:RimWorld.IncidentDef"/>).
+            Used for search, filtering, and UI display in the settings screen.
+            </summary>
+            <example>
+            <code>
+            IIncidentItem item = new IncidentItem("RaidEnemy", "Enemy Raid", "Core");
+            Assert.IsTrue(item.MatchesQuery("Raid"));
+            </code>
+            </example>
+        </member>
+        <member name="P:LetterController.Core.IIncidentItem.DefName">
+            <summary>
+            Gets the unique defName identifier of the incident.
+            </summary>
+        </member>
+        <member name="P:LetterController.Core.IIncidentItem.Label">
+            <summary>
+            Gets the human-readable display label of the incident.
+            </summary>
+        </member>
+        <member name="P:LetterController.Core.IIncidentItem.ModName">
+            <summary>
+            Gets the name of the package or mod that added this incident definition.
+            </summary>
+        </member>
+        <member name="P:LetterController.Core.IIncidentItem.Def">
+            <summary>
+            Gets the underlying <see cref="T:RimWorld.IncidentDef"/> instance, or <c>null</c> in unit test contexts.
+            </summary>
+        </member>
+        <member name="P:LetterController.Core.IIncidentItem.LetterDef">
+            <summary>
+            Gets the associated <see cref="T:Verse.LetterDef"/> configured on this incident, if any.
+            </summary>
+        </member>
+        <member name="M:LetterController.Core.IIncidentItem.MatchesQuery(System.String)">
+            <summary>
+            Evaluates whether this incident matches the specified search query across its Label, DefName, or ModName.
+            Evaluated with short-circuiting to minimize comparisons.
+            </summary>
+            <param name="query">The search query keyword.</param>
+            <returns><c>true</c> if the query matches; otherwise, <c>false</c>.</returns>
+        </member>
+        <member name="T:LetterController.Core.ILetterControllerSettings">
+            <summary>
+            Defines the contract for managing and querying incident letter behaviors.
+            Decouples letter settings persistence from UI and patching logic to facilitate unit testing.
+            </summary>
+            <example>
+            <code>
+            ILetterControllerSettings settings = new LetterControllerSettings();
+            settings.SetBehavior("RaidEnemy", LetterBehavior.Ignore);
+            Assert.AreEqual(LetterBehavior.Ignore, settings.GetBehavior("RaidEnemy"));
+            </code>
+            </example>
+        </member>
+        <member name="M:LetterController.Core.ILetterControllerSettings.GetBehavior(System.String)">
+            <summary>
+            Gets the configured <see cref="T:LetterController.Core.LetterBehavior"/> for the specified incident defName.
+            </summary>
+            <param name="defName">The defName identifier of the incident.</param>
+            <returns>The configured <see cref="T:LetterController.Core.LetterBehavior"/>, or <see cref="F:LetterController.Core.LetterBehavior.Default"/> if not configured.</returns>
+        </member>
+        <member name="M:LetterController.Core.ILetterControllerSettings.SetBehavior(System.String,LetterController.Core.LetterBehavior)">
+            <summary>
+            Sets the desired <see cref="T:LetterController.Core.LetterBehavior"/> for the specified incident defName.
+            </summary>
+            <param name="defName">The defName identifier of the incident.</param>
+            <param name="behavior">The target behavior.</param>
+        </member>
+        <member name="M:LetterController.Core.ILetterControllerSettings.ResetAll">
+            <summary>
+            Resets all customized incident behaviors back to <see cref="F:LetterController.Core.LetterBehavior.Default"/>.
+            </summary>
+        </member>
+        <member name="P:LetterController.Core.ILetterControllerSettings.CustomCount">
+            <summary>
+            Gets the total number of customized incident behavior entries.
+            </summary>
+        </member>
         <member name="T:LetterController.Core.IncidentContext">
             <summary>
             Provides ambient execution context tracking for active <see cref="T:RimWorld.IncidentDef"/> instances.
             Uses thread-static storage to guarantee thread isolation and deterministic context scoping.
             </summary>
+            <example>
+            <code>
+            var incident = new IncidentDef { defName = "RaidEnemy" };
+            using (IncidentContext.EnterScope(incident))
+            {
+                Assert.AreEqual("RaidEnemy", IncidentContext.CurrentIncident?.defName);
+            }
+            Assert.IsNull(IncidentContext.CurrentIncident);
+            </code>
+            </example>
         </member>
         <member name="P:LetterController.Core.IncidentContext.CurrentIncident">
             <summary>
@@ -16,12 +108,27 @@
             Returns <c>null</c> when code is executing outside of an incident lifecycle.
             </summary>
         </member>
+        <member name="M:LetterController.Core.IncidentContext.EnterScope(RimWorld.IncidentDef)">
+            <summary>
+            Enters an ambient incident context scope that automatically restores the previous context upon disposal.
+            Safe for nested or re-entrant executions.
+            </summary>
+            <param name="incident">The incident definition to set as current.</param>
+            <returns>An <see cref="T:System.IDisposable"/> scope token that restores the prior context when disposed.</returns>
+        </member>
         <member name="T:LetterController.Core.IncidentItem">
             <summary>
             Represents an immutable metadata item for an incident definition (<see cref="T:RimWorld.IncidentDef"/>),
             encapsulating incident details, originating mod information, and associated letter data.
             Optimized for fast search, filtering, and UI display in the settings screen.
             </summary>
+            <example>
+            <code>
+            var item = new IncidentItem("RaidEnemy", "Enemy Raid", "Core");
+            Assert.IsTrue(item.MatchesQuery("Enemy"));
+            Assert.IsFalse(item.MatchesQuery("Trader"));
+            </code>
+            </example>
         </member>
         <member name="P:LetterController.Core.IncidentItem.DefName">
             <summary>
@@ -65,25 +172,40 @@
             <param name="modName">The originating mod or package name.</param>
             <param name="def">The optional incident definition.</param>
         </member>
+        <member name="M:LetterController.Core.IncidentItem.MatchesQuery(System.String)">
+            <summary>
+            Determines whether this incident item matches the specified search query across its Label, DefName, or ModName.
+            Uses short-circuiting to minimize character comparisons: tests Label first (most common match),
+            then DefName, then ModName.
+            </summary>
+            <param name="query">The search query keyword.</param>
+            <returns><c>true</c> if matched; otherwise, <c>false</c>.</returns>
+        </member>
         <member name="T:LetterController.Core.LetterBehavior">
             <summary>
-            Represents the desired in-game behavior for a specific letter type.
+            Represents the desired in-game behavior for letters triggered by a specific incident.
             </summary>
+            <example>
+            <code>
+            var behavior = LetterBehavior.Ignore;
+            Assert.IsTrue(behavior == LetterBehavior.Ignore);
+            </code>
+            </example>
         </member>
         <member name="F:LetterController.Core.LetterBehavior.Default">
             <summary>
-            Default behavior. Respects the game's native "Pause on Letter" option.
+            Default behavior (0). Respects vanilla game mechanics and the "Pause on Letter" gameplay option.
             </summary>
         </member>
         <member name="F:LetterController.Core.LetterBehavior.Ignore">
             <summary>
-            Suppresses the letter completely. It will not be displayed on the letter stack,
-            and no letter arrival sound will play.
+            Suppresses the letter completely (1). It will not be displayed on the letter stack,
+            and no letter arrival notification sound will play.
             </summary>
         </member>
         <member name="F:LetterController.Core.LetterBehavior.Pause">
             <summary>
-            Forces the game to pause when the letter arrives, even if its letter type
+            Forces the game to pause immediately (2) when the incident letter arrives, even if its letter type
             is not covered by the game's native "Pause on Letter" option.
             </summary>
         </member>
@@ -92,6 +214,11 @@
             The entry point Mod class for Letter Controller.
             Manages the mod lifecycle, initializes Harmony patches, and hosts the mod settings window.
             </summary>
+            <example>
+            <code>
+            // Mod lifecycle entry point managed by RimWorld mod loader.
+            </code>
+            </example>
         </member>
         <member name="P:LetterController.Core.LetterControllerMod.Settings">
             <summary>
@@ -104,6 +231,12 @@
             Loads user settings and applies Harmony patches.
             </summary>
             <param name="content">The mod content pack.</param>
+        </member>
+        <member name="M:LetterController.Core.LetterControllerMod.SetSettingsForTesting(LetterController.Core.LetterControllerSettings)">
+            <summary>
+            Sets the mod settings instance directly (primarily used for test harness initialization).
+            </summary>
+            <param name="settings">The settings instance.</param>
         </member>
         <member name="M:LetterController.Core.LetterControllerMod.SettingsCategory">
             <summary>
@@ -123,6 +256,13 @@
             Stores user configurations for incident letter behavior in RimWorld's mod options.
             Manages serialization via RimWorld's Scribe system and provides O(1) behavior lookups per incident.
             </summary>
+            <example>
+            <code>
+            var settings = new LetterControllerSettings();
+            settings.SetBehavior("RaidEnemy", LetterBehavior.Pause);
+            Assert.AreEqual(LetterBehavior.Pause, settings.GetBehavior("RaidEnemy"));
+            </code>
+            </example>
         </member>
         <member name="F:LetterController.Core.LetterControllerSettings.customBehaviors">
             <summary>
@@ -132,15 +272,15 @@
         </member>
         <member name="M:LetterController.Core.LetterControllerSettings.GetBehavior(System.String)">
             <summary>
-            Gets the configured <see cref="T:LetterController.Core.LetterBehavior"/> for the specified incident defName.
+            Gets the configured <see cref="T:LetterController.Core.LetterBehavior"/> for the specified incident defName in O(1) time complexity.
             </summary>
             <param name="defName">The defName of the incident.</param>
             <returns>The configured behavior, or <see cref="F:LetterController.Core.LetterBehavior.Default"/> if not configured.</returns>
         </member>
         <member name="M:LetterController.Core.LetterControllerSettings.SetBehavior(System.String,LetterController.Core.LetterBehavior)">
             <summary>
-            Sets the <see cref="T:LetterController.Core.LetterBehavior"/> for the specified incident defName.
-            When setting to <see cref="F:LetterController.Core.LetterBehavior.Default"/>, the entry is pruned to conserve memory.
+            Sets the <see cref="T:LetterController.Core.LetterBehavior"/> for the specified incident defName in O(1) time complexity.
+            When setting to <see cref="F:LetterController.Core.LetterBehavior.Default"/>, the entry is pruned to conserve memory (O(K) space complexity).
             Changes take effect immediately without requiring a game reload.
             </summary>
             <param name="defName">The defName of the incident.</param>
@@ -149,6 +289,7 @@
         <member name="M:LetterController.Core.LetterControllerSettings.ResetAll">
             <summary>
             Resets all configured incident letter behaviors back to <see cref="F:LetterController.Core.LetterBehavior.Default"/>.
+            Time complexity: O(1) by clearing the dictionary.
             </summary>
         </member>
         <member name="P:LetterController.Core.LetterControllerSettings.CustomCount">
@@ -158,7 +299,7 @@
         </member>
         <member name="M:LetterController.Core.LetterControllerSettings.ExposeData">
             <summary>
-            Saves and loads mod settings data.
+            Saves and loads mod settings data using RimWorld's Scribe system.
             </summary>
         </member>
         <member name="T:LetterController.Patches.IncidentWorkerPatch">
@@ -166,6 +307,14 @@
             Harmony patch targeting <see cref="M:RimWorld.IncidentWorker.TryExecute(RimWorld.IncidentParms)"/>
             to establish and maintain ambient <see cref="T:LetterController.Core.IncidentContext"/> throughout incident execution.
             </summary>
+            <example>
+            <code>
+            // Context is automatically populated during IncidentWorker execution:
+            IncidentWorkerPatch.Prefix(worker, out var state);
+            try { /* incident runs */ }
+            finally { IncidentWorkerPatch.Finalizer(null, state); }
+            </code>
+            </example>
         </member>
         <member name="M:LetterController.Patches.IncidentWorkerPatch.Prefix(RimWorld.IncidentWorker,RimWorld.IncidentDef@)">
             <summary>
@@ -187,7 +336,14 @@
             <summary>
             Harmony patch targeting <see cref="M:Verse.LetterStack.ReceiveLetter(Verse.Letter,System.String,System.Int32,System.Boolean)"/>
             to apply custom user behaviors (Ignore or Pause) to letters triggered by in-game incidents.
+            Delegates decision and pause execution to <see cref="T:LetterController.Services.LetterInterceptionPolicy"/>.
             </summary>
+            <example>
+            <code>
+            // Prefix suppresses letter when policy indicates Ignore:
+            bool allow = LetterStackPatch.Prefix(letter);
+            </code>
+            </example>
         </member>
         <member name="M:LetterController.Patches.LetterStackPatch.Prefix(Verse.Letter)">
             <summary>
@@ -206,6 +362,40 @@
             </summary>
             <param name="let">The arriving letter.</param>
             <param name="delayTicks">The delay in ticks before the letter is added.</param>
+        </member>
+        <member name="T:LetterController.Services.IIncidentCatalogProvider">
+            <summary>
+            Provides an abstraction for retrieving available incident definitions in the game.
+            Decouples incident cataloging from static RimWorld DefDatabase lookups to facilitate automated testing.
+            </summary>
+            <example>
+            <code>
+            IIncidentCatalogProvider provider = DefDatabaseIncidentCatalogProvider.Instance;
+            IEnumerable&lt;IncidentDef&gt; defs = provider.GetAllIncidents();
+            </code>
+            </example>
+        </member>
+        <member name="M:LetterController.Services.IIncidentCatalogProvider.GetAllIncidents">
+            <summary>
+            Retrieves all loaded incident definitions in the game environment.
+            </summary>
+            <returns>A collection of all loaded <see cref="T:RimWorld.IncidentDef"/> instances.</returns>
+        </member>
+        <member name="T:LetterController.Services.DefDatabaseIncidentCatalogProvider">
+            <summary>
+            Default catalog provider implementation querying RimWorld's <see cref="T:Verse.DefDatabase`1"/>.
+            </summary>
+        </member>
+        <member name="F:LetterController.Services.DefDatabaseIncidentCatalogProvider.Instance">
+            <summary>
+            Gets the singleton instance of <see cref="T:LetterController.Services.DefDatabaseIncidentCatalogProvider"/>.
+            </summary>
+        </member>
+        <member name="M:LetterController.Services.DefDatabaseIncidentCatalogProvider.GetAllIncidents">
+            <summary>
+            Retrieves all incident definitions from <see cref="P:Verse.DefDatabase`1.AllDefsListForReading"/>.
+            </summary>
+            <returns>The list of all loaded incident definitions.</returns>
         </member>
         <member name="T:LetterController.Services.IncidentSortField">
             <summary>
@@ -245,8 +435,18 @@
         <member name="T:LetterController.Services.IncidentFilterService">
             <summary>
             Service responsible for gathering, filtering, searching, and sorting incident definitions that send letters.
-            Employs cached state and dirty flags to avoid redundant allocations on every UI render frame.
+            Optimized with O(N) linear-time bucket sorting for letter behaviors, zero-allocation static comparers,
+            single-pass search filtering, and dirty-flag state caching.
             </summary>
+            <example>
+            <code>
+            var service = new IncidentFilterService();
+            service.SetItems(new[] { new IncidentItem("RaidEnemy", "Enemy Raid", "Core") });
+            service.SearchQuery = "Enemy";
+            service.Update(new LetterControllerSettings());
+            Assert.AreEqual(1, service.FilteredItems.Count);
+            </code>
+            </example>
         </member>
         <member name="P:LetterController.Services.IncidentFilterService.FilteredItems">
             <summary>
@@ -290,6 +490,13 @@
             including all incidents that send in-game letters.
             </summary>
         </member>
+        <member name="M:LetterController.Services.IncidentFilterService.InitializeFromCatalog(LetterController.Services.IIncidentCatalogProvider)">
+            <summary>
+            Initializes the incident catalog from an abstract catalog provider.
+            Facilitates automated testing without a live RimWorld DefDatabase.
+            </summary>
+            <param name="catalogProvider">The incident catalog provider.</param>
+        </member>
         <member name="M:LetterController.Services.IncidentFilterService.SendsLetter(RimWorld.IncidentDef)">
             <summary>
             Determines whether the specified <see cref="T:RimWorld.IncidentDef"/> is valid and can send in-game letters.
@@ -303,6 +510,7 @@
         <member name="M:LetterController.Services.IncidentFilterService.SetItems(System.Collections.Generic.IEnumerable{LetterController.Core.IncidentItem})">
             <summary>
             Sets items explicitly (primarily used for unit testing).
+            Rebuilds the available mod filters without array shifting.
             </summary>
             <param name="items">The items list.</param>
         </member>
@@ -312,12 +520,91 @@
             </summary>
             <param name="field">The sort field to activate.</param>
         </member>
-        <member name="M:LetterController.Services.IncidentFilterService.Update(LetterController.Core.LetterControllerSettings)">
+        <member name="M:LetterController.Services.IncidentFilterService.Update(LetterController.Core.ILetterControllerSettings)">
             <summary>
             Updates the filtered and sorted list if any search parameters or settings changed.
-            Should be called before rendering the UI table.
+            Avoids intermediate LINQ allocations by using a single-pass filter loop and O(N) bucket sorting.
             </summary>
             <param name="settings">The active settings instance to resolve behaviors for sorting.</param>
+        </member>
+        <member name="M:LetterController.Services.IncidentFilterService.SortByBehaviorLinear(System.Collections.Generic.List{LetterController.Core.IncidentItem},LetterController.Core.ILetterControllerSettings,LetterController.Services.SortDirection)">
+            <summary>
+            Sorts incident items by configured behavior using an O(N) 3-bucket counting partition algorithm.
+            Reduces dictionary lookups from 2*N*log(N) to exactly N, and achieves linear time complexity.
+            Preserves stable title-ordering within each bucket.
+            </summary>
+        </member>
+        <member name="T:LetterController.Services.IGameSpeedController">
+            <summary>
+            Abstraction for controlling the game playback speed and pause state.
+            Decouples <see cref="P:Verse.Find.TickManager"/> to enable deterministic unit testing without a live game instance.
+            </summary>
+        </member>
+        <member name="M:LetterController.Services.IGameSpeedController.Pause">
+            <summary>
+            Pauses the game immediately.
+            </summary>
+        </member>
+        <member name="T:LetterController.Services.RimWorldGameSpeedController">
+            <summary>
+            Default game speed controller invoking RimWorld's native <see cref="M:Verse.TickManager.Pause"/>.
+            </summary>
+        </member>
+        <member name="F:LetterController.Services.RimWorldGameSpeedController.Instance">
+            <summary>
+            Gets the singleton instance of <see cref="T:LetterController.Services.RimWorldGameSpeedController"/>.
+            </summary>
+        </member>
+        <member name="M:LetterController.Services.RimWorldGameSpeedController.Pause">
+            <summary>
+            Pauses the game using RimWorld's active <see cref="T:Verse.TickManager"/>.
+            </summary>
+        </member>
+        <member name="T:LetterController.Services.LetterInterceptionPolicy">
+            <summary>
+            Pure policy service determining letter interception, suppression, and pausing behaviors.
+            Fully decoupled from Harmony patches and static game singletons for complete testability.
+            </summary>
+            <example>
+            <code>
+            var incident = new IncidentDef { defName = "RaidEnemy" };
+            var settings = new LetterControllerSettings();
+            settings.SetBehavior("RaidEnemy", LetterBehavior.Ignore);
+            bool suppress = LetterInterceptionPolicy.ShouldSuppress(incident, settings);
+            Assert.IsTrue(suppress);
+            </code>
+            </example>
+        </member>
+        <member name="M:LetterController.Services.LetterInterceptionPolicy.ShouldSuppress(RimWorld.IncidentDef,LetterController.Core.ILetterControllerSettings)">
+            <summary>
+            Determines whether an arriving letter should be suppressed (ignored) based on its originating incident and user configuration.
+            Time complexity: O(1) hash lookup.
+            </summary>
+            <param name="incident">The active incident that generated the letter, or <c>null</c> if none.</param>
+            <param name="settings">The configured mod settings instance, or <c>null</c>.</param>
+            <returns><c>true</c> if the letter should be suppressed; otherwise, <c>false</c>.</returns>
+        </member>
+        <member name="M:LetterController.Services.LetterInterceptionPolicy.ShouldPause(Verse.Letter,System.Int32,RimWorld.IncidentDef,LetterController.Core.ILetterControllerSettings)">
+            <summary>
+            Determines whether the game should pause upon letter arrival based on its originating incident and user configuration.
+            Respects delayed ticks and letter visibility rules.
+            Time complexity: O(1) hash lookup.
+            </summary>
+            <param name="let">The arriving letter.</param>
+            <param name="delayTicks">The delay in ticks before the letter is added.</param>
+            <param name="incident">The active incident that generated the letter, or <c>null</c> if none.</param>
+            <param name="settings">The configured mod settings instance, or <c>null</c>.</param>
+            <returns><c>true</c> if the game should be paused; otherwise, <c>false</c>.</returns>
+        </member>
+        <member name="M:LetterController.Services.LetterInterceptionPolicy.HandlePostfix(Verse.Letter,System.Int32,RimWorld.IncidentDef,LetterController.Core.ILetterControllerSettings,LetterController.Services.IGameSpeedController)">
+            <summary>
+            Executes postfix pause logic if conditions are met.
+            </summary>
+            <param name="let">The arriving letter.</param>
+            <param name="delayTicks">The delay in ticks.</param>
+            <param name="incident">The active incident, or <c>null</c>.</param>
+            <param name="settings">The configured mod settings, or <c>null</c>.</param>
+            <param name="speedController">The speed controller to execute the pause action (defaults to <see cref="F:LetterController.Services.RimWorldGameSpeedController.Instance"/>).</param>
         </member>
         <member name="T:LetterController.UI.LetterControllerSettingsUi">
             <summary>
@@ -325,8 +612,20 @@
             Follows RimWorld's native UI conventions, including FloatMenus, ScrollViews, and visual styling.
             Displays letter-sending incidents with per-incident behavior controls.
             </summary>
+            <example>
+            <code>
+            var ui = new LetterControllerSettingsUi();
+            ui.Draw(new Rect(0, 0, 800, 600), new LetterControllerSettings());
+            </code>
+            </example>
         </member>
-        <member name="M:LetterController.UI.LetterControllerSettingsUi.Draw(UnityEngine.Rect,LetterController.Core.LetterControllerSettings)">
+        <member name="M:LetterController.UI.LetterControllerSettingsUi.#ctor(LetterController.Services.IncidentFilterService)">
+            <summary>
+            Initializes a new instance of the <see cref="T:LetterController.UI.LetterControllerSettingsUi"/> class.
+            </summary>
+            <param name="filterService">Optional filter service dependency; uses default instance if not provided.</param>
+        </member>
+        <member name="M:LetterController.UI.LetterControllerSettingsUi.Draw(UnityEngine.Rect,LetterController.Core.ILetterControllerSettings)">
             <summary>
             Renders the settings screen contents within the specified bounding rectangle.
             </summary>

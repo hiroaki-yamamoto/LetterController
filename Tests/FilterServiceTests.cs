@@ -1,27 +1,27 @@
-using System.Collections.Generic;
 using LetterController.Core;
 using LetterController.Services;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using RimWorld;
 
 namespace LetterController.Tests
 {
     /// <summary>
-    /// Unit tests verifying the search, filtering, and sorting behavior of <see cref="IncidentFilterService"/>.
+    /// Unit tests verifying the search, filtering, and linear-time O(N) sorting behaviors of <see cref="IncidentFilterService"/>.
     /// </summary>
     [TestClass]
     public class FilterServiceTests
     {
-        private List<IncidentItem> CreateSampleItems()
+        private static List<IncidentItem> CreateSampleItems()
         {
             return new List<IncidentItem>
             {
-                new IncidentItem("RaidEnemy", "Enemy Raid", "Core"),
-                new IncidentItem("TraderCaravanArrival", "Trader Caravan", "Core"),
-                new IncidentItem("SolarFlare", "Solar Flare", "Core"),
-                new IncidentItem("EntityCodexEntryUnlocked", "Entity Discovered", "Anomaly"),
-                new IncidentItem("Infestation", "Infestation", "Biotech"),
-                new IncidentItem("ModCustomIncident", "Custom Mod Event", "Awesome Mod"),
-                new IncidentItem("NPC_DiploChange", "NPC Diplo Change", "Dynamic Diplomacy - Continued")
+                new("RaidEnemy", "Enemy Raid", "Core"),
+                new("TraderCaravanArrival", "Trader Caravan", "Core"),
+                new("SolarFlare", "Solar Flare", "Core"),
+                new("EntityCodexEntryUnlocked", "Entity Discovered", "Anomaly"),
+                new("Infestation", "Infestation", "Biotech"),
+                new("ModCustomIncident", "Custom Mod Event", "Awesome Mod"),
+                new("NPC_DiploChange", "NPC Diplo Change", "Dynamic Diplomacy - Continued")
             };
         }
 
@@ -32,14 +32,14 @@ namespace LetterController.Tests
             Assert.IsFalse(IncidentFilterService.SendsLetter(null!));
 
             // Def with null or empty defName returns false
-            var emptyDef = new RimWorld.IncidentDef { defName = null };
+            var emptyDef = new IncidentDef { defName = null };
             Assert.IsFalse(IncidentFilterService.SendsLetter(emptyDef));
 
-            var blankDef = new RimWorld.IncidentDef { defName = string.Empty };
+            var blankDef = new IncidentDef { defName = string.Empty };
             Assert.IsFalse(IncidentFilterService.SendsLetter(blankDef));
 
             // Incident without static letterDef/letterLabel (e.g. Dynamic Diplomacy, RaidEnemy) returns true
-            var dynamicDef = new RimWorld.IncidentDef
+            var dynamicDef = new IncidentDef
             {
                 defName = "NPC_DiploChange",
                 letterDef = null,
@@ -49,7 +49,7 @@ namespace LetterController.Tests
             Assert.IsTrue(IncidentFilterService.SendsLetter(dynamicDef));
 
             // Incident with static letterDef returns true
-            var staticDef = new RimWorld.IncidentDef
+            var staticDef = new IncidentDef
             {
                 defName = "SolarFlare",
                 letterLabel = "Solar flare"
@@ -58,7 +58,7 @@ namespace LetterController.Tests
         }
 
         [TestMethod]
-        public void SetItems_InitializesAllModsFilter()
+        public void SetItems_InitializesAllModsFilterWithoutShifting()
         {
             var service = new IncidentFilterService();
             service.SetItems(CreateSampleItems());
@@ -116,6 +116,22 @@ namespace LetterController.Tests
         }
 
         [TestMethod]
+        public void SinglePassFilter_CombinesModAndQueryFiltersAccurately()
+        {
+            var service = new IncidentFilterService();
+            var settings = new LetterControllerSettings();
+            service.SetItems(CreateSampleItems());
+
+            // Core has RaidEnemy, TraderCaravanArrival, SolarFlare
+            service.SelectedModFilter = "Core";
+            service.SearchQuery = "Flare";
+            service.Update(settings);
+
+            Assert.AreEqual(1, service.FilteredItems.Count);
+            Assert.AreEqual("SolarFlare", service.FilteredItems[0].DefName);
+        }
+
+        [TestMethod]
         public void SortByTitle_AscendingAndDescending()
         {
             var service = new IncidentFilterService();
@@ -156,21 +172,64 @@ namespace LetterController.Tests
         }
 
         [TestMethod]
-        public void SortByBehavior_RespectsSettingsValues()
+        public void SortByBehaviorLinear_AscendingAndDescending()
         {
             var service = new IncidentFilterService();
             var settings = new LetterControllerSettings();
             service.SetItems(CreateSampleItems());
 
-            // Set one item to Pause (value 2), others remain Default (value 0)
-            settings.SetBehavior("RaidEnemy", LetterBehavior.Pause);
+            // Set different behaviors
+            settings.SetBehavior("RaidEnemy", LetterBehavior.Pause); // 2
+            settings.SetBehavior("Infestation", LetterBehavior.Ignore); // 1
+            // Others are Default: 0
+
+            // Test Descending: Pause (2) -> Ignore (1) -> Default (0)
+            service.SortField = IncidentSortField.Behavior;
+            service.SortDirection = SortDirection.Descending;
+            service.Update(settings);
+
+            Assert.AreEqual("RaidEnemy", service.FilteredItems[0].DefName, "Pause item should be first in descending order.");
+            Assert.AreEqual("Infestation", service.FilteredItems[1].DefName, "Ignore item should be second in descending order.");
+
+            // Test Ascending: Default (0) -> Ignore (1) -> Pause (2)
+            service.SortDirection = SortDirection.Ascending;
+            service.Update(settings);
+
+            Assert.AreEqual(LetterBehavior.Default, settings.GetBehavior(service.FilteredItems[0].DefName));
+            Assert.AreEqual("Infestation", service.FilteredItems[^2].DefName);
+            Assert.AreEqual("RaidEnemy", service.FilteredItems[^1].DefName);
+        }
+
+        [TestMethod]
+        public void SortByBehaviorLinear_PreservesStableTitleOrderWithinBuckets()
+        {
+            var service = new IncidentFilterService();
+            var settings = new LetterControllerSettings();
+
+            var items = new List<IncidentItem>
+            {
+                new("DefZ", "Zebra", "ModA"),
+                new("DefA", "Apple", "ModA"),
+                new("DefM", "Mango", "ModA"),
+                new("DefB", "Banana", "ModA")
+            };
+            service.SetItems(items);
+
+            // Set Apple and Zebra to Pause; Banana and Mango remain Default
+            settings.SetBehavior("DefA", LetterBehavior.Pause);
+            settings.SetBehavior("DefZ", LetterBehavior.Pause);
 
             service.SortField = IncidentSortField.Behavior;
             service.SortDirection = SortDirection.Descending;
             service.Update(settings);
 
-            // In descending order, Pause (2) should be at the top
-            Assert.AreEqual("RaidEnemy", service.FilteredItems[0].DefName);
+            // The pause bucket should contain Apple before Zebra (stably sorted by title)
+            Assert.AreEqual("Apple", service.FilteredItems[0].Label);
+            Assert.AreEqual("Zebra", service.FilteredItems[1].Label);
+
+            // The default bucket should contain Banana before Mango (stably sorted by title)
+            Assert.AreEqual("Banana", service.FilteredItems[2].Label);
+            Assert.AreEqual("Mango", service.FilteredItems[3].Label);
         }
 
         [TestMethod]
@@ -188,6 +247,83 @@ namespace LetterController.Tests
             service.ToggleSort(IncidentSortField.Mod);
             Assert.AreEqual(IncidentSortField.Mod, service.SortField);
             Assert.AreEqual(SortDirection.Ascending, service.SortDirection);
+        }
+
+        [TestMethod]
+        public void InitializeFromCatalog_PopulatesFromCustomProvider()
+        {
+            var customDefs = new List<IncidentDef>
+            {
+                new() { defName = "CustomDef1", label = "Custom 1" },
+                new() { defName = "CustomDef2", label = "Custom 2" },
+                new() { defName = null } // Invalid, should be filtered out
+            };
+
+            var mockProvider = new StubCatalogProvider(customDefs);
+            var service = new IncidentFilterService();
+            service.InitializeFromCatalog(mockProvider);
+            service.Update(new LetterControllerSettings());
+
+            Assert.AreEqual(2, service.TotalCount);
+            Assert.AreEqual("CustomDef1", service.FilteredItems[0].DefName);
+            Assert.AreEqual("CustomDef2", service.FilteredItems[1].DefName);
+        }
+
+        [TestMethod]
+        public void LargeDataset_LinearSortPerformanceAndCorrectness()
+        {
+            // Verify O(N) performance on 1,000 items
+            var largeList = new List<IncidentItem>(1000);
+            var settings = new LetterControllerSettings();
+
+            for (int i = 0; i < 1000; i++)
+            {
+                string defName = $"Incident_{i:D4}";
+                largeList.Add(new IncidentItem(defName, $"Incident {i:D4}", "TestMod"));
+
+                if (i % 3 == 1)
+                {
+                    settings.SetBehavior(defName, LetterBehavior.Ignore);
+                }
+                else if (i % 3 == 2)
+                {
+                    settings.SetBehavior(defName, LetterBehavior.Pause);
+                }
+            }
+
+            var service = new IncidentFilterService();
+            service.SetItems(largeList);
+            service.SortField = IncidentSortField.Behavior;
+            service.SortDirection = SortDirection.Descending;
+            service.Update(settings);
+
+            Assert.AreEqual(1000, service.FilteredItems.Count);
+
+            // Descending order: all Pause first, then all Ignore, then all Default
+            int expectedPauseCount = largeList.Count(x => settings.GetBehavior(x.DefName) == LetterBehavior.Pause);
+            int expectedIgnoreCount = largeList.Count(x => settings.GetBehavior(x.DefName) == LetterBehavior.Ignore);
+
+            for (int i = 0; i < expectedPauseCount; i++)
+            {
+                Assert.AreEqual(LetterBehavior.Pause, settings.GetBehavior(service.FilteredItems[i].DefName));
+            }
+
+            for (int i = expectedPauseCount; i < expectedPauseCount + expectedIgnoreCount; i++)
+            {
+                Assert.AreEqual(LetterBehavior.Ignore, settings.GetBehavior(service.FilteredItems[i].DefName));
+            }
+
+            for (int i = expectedPauseCount + expectedIgnoreCount; i < service.FilteredItems.Count; i++)
+            {
+                Assert.AreEqual(LetterBehavior.Default, settings.GetBehavior(service.FilteredItems[i].DefName));
+            }
+        }
+
+        private sealed class StubCatalogProvider : IIncidentCatalogProvider
+        {
+            private readonly IEnumerable<IncidentDef> defs;
+            public StubCatalogProvider(IEnumerable<IncidentDef> defs) => this.defs = defs;
+            public IEnumerable<IncidentDef> GetAllIncidents() => defs;
         }
     }
 }
